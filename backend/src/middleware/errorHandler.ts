@@ -9,7 +9,7 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
     {
       uuid,
       requestMethod: req.method,
-      requestPath: req.path,
+      requestPath: req.originalUrl.split("?")[0],
       requestHeaders: JSON.stringify(req.headers),
       responseStatus: status,
       requestBody: JSON.stringify(req.body),

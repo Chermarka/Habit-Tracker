@@ -53,9 +53,37 @@ export interface ApiError {
   requestId: string;
 }
 
+export interface CurrentUser {
+  id: string;
+  nickname: string;
+}
+
+const SESSION_KEY = "habit-tracker-session";
+
+export function getSession(): CurrentUser | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as CurrentUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setSession(user: CurrentUser) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+}
+
+export function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const session = getSession();
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(session ? { "x-user-id": session.id } : {}),
+    },
     ...options,
   });
   const body = await res.json();
@@ -67,6 +95,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  register: async (nickname: string) => {
+    const user = await request<CurrentUser>(`/auth/register`, {
+      method: "POST",
+      body: JSON.stringify({ nickname }),
+    });
+    setSession(user);
+    return user;
+  },
+  login: async (nickname: string) => {
+    const user = await request<CurrentUser>(`/auth/login`, {
+      method: "POST",
+      body: JSON.stringify({ nickname }),
+    });
+    setSession(user);
+    return user;
+  },
   getDashboard: (date: string) => request<DashboardHabit[]>(`/habits?date=${date}`),
   createHabit: (input: { name: string; type: HabitType; targetValue?: number; unit?: string }) =>
     request<Habit>(`/habits`, { method: "POST", body: JSON.stringify(input) }),
@@ -78,12 +122,4 @@ export const api = {
   getWeek: (start: string) => request<WeekResponse>(`/habits/week?start=${start}`),
   archiveHabit: (habitId: string) => request<Habit>(`/habits/${habitId}/archive`, { method: "POST" }),
   getArchived: () => request<Habit[]>(`/habits/archived`),
-  getHabitHeatmap: (habitId: string, year: number, month?: number) =>
-    request<{ date: string; percentage: number }[]>(
-      `/habits/${habitId}/heatmap?year=${year}${month ? `&month=${month}` : ""}`
-    ),
-  getAggregateHeatmap: (year: number, month?: number) =>
-    request<{ date: string; done: number; total: number; percentage: number }[]>(
-      `/habits/heatmap?year=${year}${month ? `&month=${month}` : ""}`
-    ),
 };

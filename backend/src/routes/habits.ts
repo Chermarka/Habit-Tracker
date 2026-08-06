@@ -1,12 +1,15 @@
 import { Router } from "express";
 import * as habitService from "../services/habitService";
+import { requireAuth } from "../middleware/requireAuth";
 import { todayStr } from "../dateUtils";
 
 export const habitsRouter = Router();
 
+habitsRouter.use(requireAuth);
+
 habitsRouter.post("/", async (req, res, next) => {
   try {
-    const habit = await habitService.createHabit(req.body);
+    const habit = await habitService.createHabit(req.userId!, req.body);
     res.status(201).json(habit);
   } catch (err) {
     next(err);
@@ -16,7 +19,7 @@ habitsRouter.post("/", async (req, res, next) => {
 habitsRouter.get("/", async (req, res, next) => {
   try {
     const date = (req.query.date as string) ?? todayStr();
-    const habits = await habitService.getDashboard(date);
+    const habits = await habitService.getDashboard(req.userId!, date);
     res.json(habits);
   } catch (err) {
     next(err);
@@ -26,28 +29,17 @@ habitsRouter.get("/", async (req, res, next) => {
 habitsRouter.get("/week", async (req, res, next) => {
   try {
     const anchor = (req.query.start as string) ?? todayStr();
-    const week = await habitService.getWeeklyMatrix(anchor);
+    const week = await habitService.getWeeklyMatrix(req.userId!, anchor);
     res.json(week);
   } catch (err) {
     next(err);
   }
 });
 
-habitsRouter.get("/archived", async (_req, res, next) => {
+habitsRouter.get("/archived", async (req, res, next) => {
   try {
-    const habits = await habitService.getArchivedHabits();
+    const habits = await habitService.getArchivedHabits(req.userId!);
     res.json(habits);
-  } catch (err) {
-    next(err);
-  }
-});
-
-habitsRouter.get("/heatmap", async (req, res, next) => {
-  try {
-    const year = Number(req.query.year) || new Date().getFullYear();
-    const month = req.query.month != null ? Number(req.query.month) : undefined;
-    const heatmap = await habitService.getAggregateHeatmap(year, month);
-    res.json(heatmap);
   } catch (err) {
     next(err);
   }
@@ -55,19 +47,8 @@ habitsRouter.get("/heatmap", async (req, res, next) => {
 
 habitsRouter.get("/:id", async (req, res, next) => {
   try {
-    const habit = await habitService.getHabitById(req.params.id);
+    const habit = await habitService.getHabitById(req.userId!, req.params.id);
     res.json(habit);
-  } catch (err) {
-    next(err);
-  }
-});
-
-habitsRouter.get("/:id/heatmap", async (req, res, next) => {
-  try {
-    const year = Number(req.query.year) || new Date().getFullYear();
-    const month = req.query.month != null ? Number(req.query.month) : undefined;
-    const heatmap = await habitService.getHabitHeatmap(req.params.id, year, month);
-    res.json(heatmap);
   } catch (err) {
     next(err);
   }
@@ -75,7 +56,7 @@ habitsRouter.get("/:id/heatmap", async (req, res, next) => {
 
 habitsRouter.patch("/:id/checkin", async (req, res, next) => {
   try {
-    const result = await habitService.checkIn(req.params.id, req.body);
+    const result = await habitService.checkIn(req.userId!, req.params.id, req.body);
     res.json(result);
   } catch (err) {
     next(err);
@@ -84,7 +65,7 @@ habitsRouter.patch("/:id/checkin", async (req, res, next) => {
 
 habitsRouter.post("/:id/archive", async (req, res, next) => {
   try {
-    const habit = await habitService.archiveHabit(req.params.id);
+    const habit = await habitService.archiveHabit(req.userId!, req.params.id);
     res.json(habit);
   } catch (err) {
     next(err);

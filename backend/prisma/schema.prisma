@@ -12,8 +12,17 @@ enum HabitType {
   NUMERIC
 }
 
+model User {
+  id        String   @id @default(uuid())
+  nickname  String   @unique
+  createdAt DateTime @default(now())
+  habits    Habit[]
+}
+
 model Habit {
   id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
   name         String
   type         HabitType
   targetValue  Int?

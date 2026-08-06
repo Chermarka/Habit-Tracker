@@ -1,17 +1,29 @@
 import { useState } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { WeeklyMatrix } from "./components/WeeklyMatrix";
-import { Analytics } from "./components/Analytics";
 import { Archive } from "./components/Archive";
 import { CreateHabitModal } from "./components/CreateHabitModal";
+import { AuthScreen } from "./components/AuthScreen";
+import { getSession, clearSession } from "./api";
+import type { CurrentUser } from "./api";
 import "./App.css";
 
-type Tab = "today" | "week" | "analytics" | "archive";
+type Tab = "today" | "week" | "archive";
 
 export default function App() {
+  const [user, setUser] = useState<CurrentUser | null>(() => getSession());
   const [tab, setTab] = useState<Tab>("today");
   const [showCreate, setShowCreate] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  if (!user) {
+    return <AuthScreen onAuthed={setUser} />;
+  }
+
+  function logout() {
+    clearSession();
+    setUser(null);
+  }
 
   return (
     <div className="app">
@@ -20,9 +32,15 @@ export default function App() {
           <h1>🌱 Habit Tracker</h1>
           <p className="tagline">Маленькі кроки, великі зміни</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowCreate(true)}>
-          + Створити звичку
-        </button>
+        <div className="header-actions">
+          <span className="user-pill">👤 {user.nickname}</span>
+          <button className="btn-primary" onClick={() => setShowCreate(true)}>
+            + Створити звичку
+          </button>
+          <button className="btn-secondary" onClick={logout}>
+            Вийти
+          </button>
+        </div>
       </header>
 
       <nav className="tabs">
@@ -32,9 +50,6 @@ export default function App() {
         <button className={tab === "week" ? "tab active" : "tab"} onClick={() => setTab("week")}>
           🗓️ Тиждень
         </button>
-        <button className={tab === "analytics" ? "tab active" : "tab"} onClick={() => setTab("analytics")}>
-          📊 Аналітика
-        </button>
         <button className={tab === "archive" ? "tab active" : "tab"} onClick={() => setTab("archive")}>
           🗄️ Архів
         </button>
@@ -43,7 +58,6 @@ export default function App() {
       <main className="app-main">
         {tab === "today" && <Dashboard key={`today-${refreshKey}`} />}
         {tab === "week" && <WeeklyMatrix key={`week-${refreshKey}`} />}
-        {tab === "analytics" && <Analytics key={`analytics-${refreshKey}`} />}
         {tab === "archive" && <Archive key={`archive-${refreshKey}`} />}
       </main>
 

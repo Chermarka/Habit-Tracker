@@ -27,7 +27,7 @@ function isDone(habit: Habit, log: HabitLog | undefined): boolean {
   return false;
 }
 
-export async function createHabit(input: CreateHabitInput): Promise<Habit> {
+export async function createHabit(userId: string, input: CreateHabitInput): Promise<Habit> {
   const name = (input.name ?? "").trim();
   if (!name) {
     throw new ValidationError("Назва є обов'язковою");
@@ -47,6 +47,7 @@ export async function createHabit(input: CreateHabitInput): Promise<Habit> {
 
   const habit = await prisma.habit.create({
     data: {
+      userId,
       name,
       type: input.type as HabitType,
       targetValue: input.type === "NUMERIC" ? input.targetValue : null,
@@ -54,7 +55,7 @@ export async function createHabit(input: CreateHabitInput): Promise<Habit> {
     },
   });
 
-  logger.info({ habitId: habit.id, name: habit.name, type: habit.type }, "Habit created");
+  logger.info({ userId, habitId: habit.id, name: habit.name, type: habit.type }, "Habit created");
   return habit;
 }
 
@@ -83,12 +84,12 @@ async function calcStreak(habit: Habit, asOfDateStr: string): Promise<number> {
   return streak;
 }
 
-export async function getDashboard(dateStr: string) {
+export async function getDashboard(userId: string, dateStr: string) {
   if (!isValidDateStr(dateStr)) {
     throw new ValidationError(`Невалідна дата: ${dateStr}`);
   }
   const habits = await prisma.habit.findMany({
-    where: { archived: false },
+    where: { userId, archived: false },
     orderBy: { createdAt: "asc" },
   });
 
@@ -126,11 +127,17 @@ export interface CheckInInput {
   value?: number;
 }
 
-export async function checkIn(habitId: string, input: CheckInInput) {
+async function getOwnedHabit(userId: string, habitId: string): Promise<Habit> {
   const habit = await prisma.habit.findUnique({ where: { id: habitId } });
-  if (!habit) {
+  // Not found and "belongs to someone else" return the same error — don't leak existence.
+  if (!habit || habit.userId !== userId) {
     throw new EntityNotFoundError("Habit", habitId);
   }
+  return habit;
+}
+
+export async function checkIn(userId: string, habitId: string, input: CheckInInput) {
+  const habit = await getOwnedHabit(userId, habitId);
   if (habit.archived) {
     throw new ConflictError("Не можна відмічати заархівовану звичку");
   }
@@ -163,13 +170,13 @@ export async function checkIn(habitId: string, input: CheckInInput) {
 
   const streak = await calcStreak(habit, input.date);
   logger.info(
-    { habitId, date: input.date, completed: log.completed, value: log.value, streak },
+    { userId, habitId, date: input.date, completed: log.completed, value: log.value, streak },
     "Habit check-in recorded"
   );
   return { log, streak };
 }
 
-export async function getWeeklyMatrix(anyDateInWeek: string) {
+export async function getWeeklyMatrix(userId: string, anyDateInWeek: string) {
   if (!isValidDateStr(anyDateInWeek)) {
     throw new ValidationError(`Невалідна дата: ${anyDateInWeek}`);
   }
@@ -178,7 +185,7 @@ export async function getWeeklyMatrix(anyDateInWeek: string) {
   const today = todayStr();
 
   const habits = await prisma.habit.findMany({
-    where: { archived: false },
+    where: { userId, archived: false },
     orderBy: { createdAt: "asc" },
   });
 
@@ -212,11 +219,8 @@ export async function getWeeklyMatrix(anyDateInWeek: string) {
   return { weekStart, weekEnd: weekDays[6], habits: matrix };
 }
 
-export async function archiveHabit(habitId: string) {
-  const habit = await prisma.habit.findUnique({ where: { id: habitId } });
-  if (!habit) {
-    throw new EntityNotFoundError("Habit", habitId);
-  }
+export async function archiveHabit(userId: string, habitId: string) {
+  const habit = await getOwnedHabit(userId, habitId);
   if (habit.archived) {
     throw new ConflictError("Звичка вже заархівована");
   }
@@ -224,101 +228,14 @@ export async function archiveHabit(habitId: string) {
     where: { id: habitId },
     data: { archived: true, archivedAt: new Date() },
   });
-  logger.info({ habitId }, "Habit archived");
+  logger.info({ userId, habitId }, "Habit archived");
   return updated;
 }
 
-export async function getArchivedHabits() {
-  return prisma.habit.findMany({ where: { archived: true }, orderBy: { archivedAt: "desc" } });
+export async function getArchivedHabits(userId: string) {
+  return prisma.habit.findMany({ where: { userId, archived: true }, orderBy: { archivedAt: "desc" } });
 }
 
-export async function getHabitById(habitId: string) {
-  const habit = await prisma.habit.findUnique({ where: { id: habitId } });
-  if (!habit) {
-    throw new EntityNotFoundError("Habit", habitId);
-  }
-  return habit;
-}
-
-/**
- * Per-habit heatmap: daily completion % for one habit (AC 4.1 reading).
- * BINARY day is 0% or 100%; NUMERIC day is min(100, value/target*100).
- */
-export async function getHabitHeatmap(habitId: string, year: number, month?: number) {
-  const habit = await getHabitById(habitId);
-  const from = month != null ? `${year}-${String(month).padStart(2, "0")}-01` : `${year}-01-01`;
-  const to = month != null ? addDays(nextMonthFirstDay(year, month), -1) : `${year}-12-31`;
-
-  const logs = await prisma.habitLog.findMany({
-    where: { habitId, date: { gte: parseDateStr(from), lte: parseDateStr(to) } },
-  });
-
-  return logs.map((l) => {
-    const dateStr = l.date.toISOString().slice(0, 10);
-    const pct =
-      habit.type === "BINARY"
-        ? l.completed
-          ? 100
-          : 0
-        : habit.targetValue
-          ? Math.min(100, Math.round(((l.value ?? 0) / habit.targetValue) * 100))
-          : 0;
-    return { date: dateStr, percentage: pct };
-  });
-}
-
-/**
- * Aggregate heatmap across all habits that existed on a given day (AC 4.2 tooltip
- * reads as "4/5 звичок" — an all-habits daily summary, not a single-habit view).
- * NOTE: this differs from the AC 4.1 wording ("обирає конкретну звичку"); the two
- * ACs describe different things and the spec doesn't reconcile them — see README.
- */
-export async function getAggregateHeatmap(year: number, month?: number) {
-  const from = month != null ? `${year}-${String(month).padStart(2, "0")}-01` : `${year}-01-01`;
-  const to = month != null ? addDays(nextMonthFirstDay(year, month), -1) : `${year}-12-31`;
-
-  const habits = await prisma.habit.findMany();
-  const logs = await prisma.habitLog.findMany({
-    where: { date: { gte: parseDateStr(from), lte: parseDateStr(to) } },
-  });
-
-  const habitById = new Map(habits.map((h) => [h.id, h]));
-  const byDate = new Map<string, { done: number; total: number }>();
-
-  for (const habit of habits) {
-    if (habit.createdAt.toISOString().slice(0, 10) > to) continue;
-    let cursor = compareDateStr(from, habit.createdAt.toISOString().slice(0, 10)) > 0
-      ? from
-      : habit.createdAt.toISOString().slice(0, 10);
-    while (compareDateStr(cursor, to) <= 0) {
-      const bucket = byDate.get(cursor) ?? { done: 0, total: 0 };
-      bucket.total += 1;
-      byDate.set(cursor, bucket);
-      cursor = addDays(cursor, 1);
-    }
-  }
-  for (const log of logs) {
-    const habit = habitById.get(log.habitId);
-    if (!habit) continue;
-    const dateStr = log.date.toISOString().slice(0, 10);
-    if (isDone(habit, log)) {
-      const bucket = byDate.get(dateStr);
-      if (bucket) bucket.done += 1;
-    }
-  }
-
-  return Array.from(byDate.entries())
-    .sort(([a], [b]) => compareDateStr(a, b))
-    .map(([date, { done, total }]) => ({
-      date,
-      done,
-      total,
-      percentage: total > 0 ? Math.round((done / total) * 100) : 0,
-    }));
-}
-
-function nextMonthFirstDay(year: number, month: number): string {
-  const m = month === 12 ? 1 : month + 1;
-  const y = month === 12 ? year + 1 : year;
-  return `${y}-${String(m).padStart(2, "0")}-01`;
+export async function getHabitById(userId: string, habitId: string) {
+  return getOwnedHabit(userId, habitId);
 }
