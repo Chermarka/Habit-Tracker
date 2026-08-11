@@ -10,7 +10,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
-    "ship-logs": "node scripts/ship-logs-to-es.js"
+    "ship-logs": "node scripts/ship-logs-to-es.js",
+    "setup:es": "node scripts/setup-es.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

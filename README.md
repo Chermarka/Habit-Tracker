@@ -8,8 +8,8 @@
 ## Стек
 
 - **Backend**: Node.js + TypeScript + Express + Prisma ORM
-- **DB**: PostgreSQL (локально через Homebrew, без Docker — Docker не
-  встановлений на цій машині)
+- **DB**: PostgreSQL — через Docker Compose (працює однаково на
+  macOS/Windows/Linux)
 - **Frontend**: React + Vite + TypeScript
 - **Логи**: власний JSON-логер (без pino) у фіксованій схемі `log.*` —
   request/response, SQL-запити з duration, помилки зі stacktrace й `uuid`.
@@ -18,30 +18,43 @@
 
 ## Запуск
 
-### 1. Postgres (одноразово, якщо ще не запущений)
+Потрібні лише [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+(macOS/Windows/Linux — увімкнений і запущений) та Node.js 18+. Жодних
+brew-формул чи macOS-специфічних кроків більше немає — інфраструктура
+однакова на будь-якій ОС.
+
+### 0. Інфраструктура (Postgres + Elasticsearch + Kibana)
 
 ```bash
-brew services start postgresql@16
+docker compose up -d
 ```
 
-БД `habit_tracker` вже створена. Якщо потрібно перестворити:
+Перший запуск качає образи й може зайняти кілька хвилин. Перевірити стан:
 
 ```bash
-/opt/homebrew/opt/postgresql@16/bin/createdb habit_tracker
+docker compose ps   # усі три сервіси мають бути "healthy"/"running"
 ```
 
-### 2. Backend
+Elasticsearch хоче мінімум ~2GB RAM, виділених Docker Desktop (Settings →
+Resources) — на слабших машинах підніми ліміт заздалегідь, інакше контейнер
+падатиме в рестарт-луп.
+
+Дані Postgres і Elasticsearch зберігаються в docker-томах між перезапусками.
+Щоб почати зовсім з нуля: `docker compose down -v`.
+
+### 1. Backend
 
 ```bash
 cd backend
-npm install          # одноразово
-npx prisma migrate dev   # одноразово / після зміни схеми
-npm run dev           # http://localhost:4000
+cp .env.example .env   # одноразово — креденшли вже узгоджені з docker-compose.yml
+npm install             # одноразово
+npx prisma migrate dev  # одноразово / після зміни схеми
+npm run dev              # http://localhost:4000
 ```
 
 Логи пишуться в `backend/logs/app.log` (JSON, по одному рядку на запис).
 
-### 3. Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -49,30 +62,26 @@ npm install           # одноразово
 npm run dev            # http://localhost:5173
 ```
 
-### 4. Elasticsearch + Kibana (опційно, для пошуку логів)
+### 3. Elasticsearch + Kibana — індекси й доставка логів (опційно, для пошуку логів)
 
-Встановлено через `brew tap elastic/tap` (безкоштовна basic-ліцензія,
-без Docker). ML-модуль вимкнено (`xpack.ml.enabled: false`) — не сумісний з
-нативним кодом на Apple Silicon і не потрібен для пошуку логів.
-
-```bash
-brew services start elastic/tap/elasticsearch-full   # http://localhost:9200
-brew services start elastic/tap/kibana-full           # http://localhost:5601
-```
-
-Elasticsearch потребує JDK — бандлований у 7.17.4 не встановився, тому
-використовується `openjdk@17` через symlink на
-`.../elasticsearch-full/7.17.4/libexec/jdk.app/Contents/Home`.
-
-Доставка логів у ES (свій легкий shipper, бо `filebeat-full` formula
-зараз зламана під поточну версію Homebrew):
+Одноразово, після того як `docker compose up -d` підняв Elasticsearch і
+Kibana (скрипт сам почекає, поки обидва відповідатимуть) — створює index
+template (усі рядкові поля -> `keyword`, без дублів `.keyword`) і index
+pattern у Kibana:
 
 ```bash
 cd backend
-npm run ship-logs   # читає logs/app.log, б'є нові рядки в /_bulk кожні 2с
+npm run setup:es
 ```
 
-Index pattern у Kibana вже створений: `habit-tracker-logs`
+Доставка логів у ES (свій легкий shipper — читає `logs/app.log`, б'є нові
+рядки в `_bulk` кожні 2с, працює безперервно, поки запущений):
+
+```bash
+npm run ship-logs
+```
+
+Index pattern у Kibana після `setup:es`: `habit-tracker-logs`
 (time field `@timestamp`) → Discover одразу показує потік логів.
 
 Схема полів (`log.*`, для трасування помилок через один `uuid`):
