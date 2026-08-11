@@ -1,9 +1,39 @@
 # Habit Tracker — навчальний практичний проєкт
 
 Окремий проєкт для практики QA-навичок: локальний застосунок + БД + пошук
-логів у Elasticsearch/Kibana. Кожен користувач має власний акаунт (нікнейм,
-без пароля) — звички ізольовані між акаунтами. Далі буде додано Trello
-(баг-трекер).
+логів у Elasticsearch/Kibana + баг-трекер у Trello. Кожен користувач має
+власний акаунт (нікнейм, без пароля) — звички ізольовані між акаунтами.
+
+## Матеріали проекту
+
+1. Веб-платформа "Трекер звичок" — http://localhost:5173
+2. GitHub — https://github.com/Chermarka/Habit-Tracker
+3. Підключення до БД
+
+   Спершу підняти: `docker compose up -d` (з кореня репозиторію — весь
+   стек, включно з Postgres, живе в Docker)
+
+   DBeaver:
+   - Host: `localhost`
+   - Port: `5432`
+   - Database: `habit_tracker`
+   - User: `habit_tracker`
+   - Password: `habit_tracker` (див. `backend/.env.example`)
+
+4. Trello (баг-трекер) — https://trello.com/b/BpqgppeA/habbit-tracker —
+   картки заводяться скілом `.claude/skills/report-trello-bug` напряму
+   через Trello API (офіційного MCP-сервера немає)
+5. Elasticsearch + Kibana — у Docker (`docker-compose.yml`), той самий
+   `docker compose up -d`, що й для БД
+
+   - Elasticsearch: http://localhost:9200
+   - Kibana: http://localhost:5601 → Discover → index pattern
+     `habit-tracker-logs`, time field `@timestamp`
+   - Одноразово після першого підняття контейнерів:
+     `cd backend && npm run setup:es` — сам чекає, поки ES/Kibana
+     відповідатимуть, і створює index template + index pattern
+   - Логи бекенду доставляються туди власним shipper-скриптом
+     (`npm run ship-logs` у `backend/`) кожні 2 секунди
 
 ## Стек
 
@@ -184,6 +214,7 @@ habit-tracker/
 
 ## Далі (не зроблено)
 
-- Trello MCP — баг-трекер для практики
+- `CLAUDE.md` для проєкту — ще не написаний (навмисно, це вправа для
+  студентів курсу)
 - Навмисно посаджені баги під кожен тип помилки з `CLAUDE.md` (SQLException,
   ValidationException, TimeoutException, entity not found тощо)
