@@ -15,7 +15,9 @@
 
    DBeaver:
    - Host: `localhost`
-   - Port: `5432`
+   - Port: `5432` — це порт **БД** з `DATABASE_URL` у `backend/.env.example`.
+     Не плутай із `PORT=4000` з того ж файлу — це порт backend-сервера
+     (крок "1. Backend" нижче), до БД не стосується.
    - Database: `habit_tracker`
    - User: `habit_tracker`
    - Password: `habit_tracker` (див. `backend/.env.example`)
@@ -229,9 +231,3 @@ habit-tracker/
 повністю, `Habit`/`HabitLog` це не зачепило (heatmap рахувався з тих самих
 таблиць, окремої моделі не мав).
 
-## Далі (не зроблено)
-
-- `CLAUDE.md` для проєкту — ще не написаний (навмисно, це вправа для
-  студентів курсу)
-- Навмисно посаджені баги під кожен тип помилки з `CLAUDE.md` (SQLException,
-  ValidationException, TimeoutException, entity not found тощо)
