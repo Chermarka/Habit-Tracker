@@ -79,8 +79,25 @@ cd backend
 cp .env.example .env   # одноразово — креденшли вже узгоджені з docker-compose.yml
 npm install             # одноразово
 npx prisma migrate dev  # одноразово / після зміни схеми
+npm run prisma:seed      # одноразово — однакові тестові дані у всіх (users: anna, dmytro)
 npm run dev              # http://localhost:4000
 ```
+
+#### Автосинк БД після `git pull`
+
+Щоб міграції та seed підтягувались самі після кожного `git pull`, а не
+вручну — одноразово (з кореня репозиторію) увімкни git hook, який лежить у
+репо (`.githooks/post-merge`):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Це локальна настройка (не йде в git), робиться раз на машину. Після цього
+кожен `git pull` сам виконає `prisma migrate deploy` + `prisma:seed`, якщо
+Postgres підняте (`docker compose up -d`) і `npm install`/`.env` вже
+зроблені. Обмеження: працює для звичайного `git pull` (merge); якщо тягнеш
+через `git pull --rebase`, хук `post-merge` не спрацює — тоді синкай вручну.
 
 Логи пишуться в `backend/logs/app.log` (JSON, по одному рядку на запис).
 

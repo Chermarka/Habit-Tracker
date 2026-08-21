@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Запускається git-ом автоматично після кожного успішного `git pull`/merge,
+# якщо репозиторій налаштований на цю папку (див. README, "Синк БД").
+# Підтягує схему (migrate deploy) і стартові дані (seed) до того, що є в репо.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT/backend" || exit 0
+
+if [ ! -d node_modules ]; then
+  echo "[post-merge] backend/node_modules відсутній — спершу 'npm install' в backend/, пропускаю синк БД."
+  exit 0
+fi
+
+if [ ! -f .env ]; then
+  echo "[post-merge] backend/.env відсутній — спершу 'cp .env.example .env', пропускаю синк БД."
+  exit 0
+fi
+
+echo "[post-merge] Синхронізую БД (prisma migrate deploy + seed)..."
+if npx prisma migrate deploy && npm run --silent prisma:seed; then
+  echo "[post-merge] БД синхронізована."
+else
+  echo "[post-merge] Не вдалося синхронізувати БД. Переконайся, що 'docker compose up -d' піднятий, і повтори вручну:"
+  echo "  cd backend && npx prisma migrate deploy && npm run prisma:seed"
+fi
+
+exit 0
