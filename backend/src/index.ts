@@ -23,6 +23,13 @@ app.use((req, res, next) => {
   // is never touched by that mechanism.
   const path = req.originalUrl.split("?")[0];
 
+  let responseBody: unknown;
+  const originalJson = res.json.bind(res);
+  res.json = (body: unknown) => {
+    responseBody = body;
+    return originalJson(body);
+  };
+
   res.on("finish", () => {
     const responseDuration = Math.round(Number(process.hrtime.bigint() - start) / 1e5) / 10; // ms, 0.1 precision
     const level = res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info";
@@ -34,6 +41,7 @@ app.use((req, res, next) => {
         requestHeaders: JSON.stringify(req.headers),
         responseStatus: res.statusCode,
         responseDuration,
+        responseBody: responseBody !== undefined ? JSON.stringify(responseBody) : undefined,
       },
       `${req.method} ${path} ${res.statusCode}`
     );

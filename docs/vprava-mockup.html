@@ -1,0 +1,277 @@
+<title>Вправа 1 і 2</title>
+<style>
+  :root {
+    --bg-page: #eceae5;
+    --slide-bg: #f5f4f0;
+    --panel-border: #d7d4cc;
+    --ink: #1c1c1a;
+    --ink-soft: #3a3936;
+    --muted: #8d8a80;
+    --accent: #1f6f68;
+    --accent-soft: #dce9e6;
+    --code-bg: #1b212a;
+    --code-text: #d7dfe1;
+    --code-dim: #7c8a90;
+    --code-accent: #5fd0c0;
+    --note-bg: #e5efec;
+    --note-border: #cfe0da;
+    --note-text: #223034;
+    --caption: #71706a;
+    --serif: Georgia, "PT Serif", "Iowan Old Style", "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg-page: #16151a;
+      --slide-bg: #1d1c22;
+      --panel-border: #34333a;
+      --ink: #ece9e2;
+      --ink-soft: #cfccc4;
+      --muted: #8f8d8a;
+      --accent: #6bd6c4;
+      --accent-soft: #24312f;
+      --code-bg: #101318;
+      --code-text: #cfd8da;
+      --code-dim: #6b7a80;
+      --code-accent: #6bd6c4;
+      --note-bg: #1e2b29;
+      --note-border: #2c3d3a;
+      --note-text: #d3e2dd;
+      --caption: #8a8884;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg-page: #16151a;
+    --slide-bg: #1d1c22;
+    --panel-border: #34333a;
+    --ink: #ece9e2;
+    --ink-soft: #cfccc4;
+    --muted: #8f8d8a;
+    --accent: #6bd6c4;
+    --accent-soft: #24312f;
+    --code-bg: #101318;
+    --code-text: #cfd8da;
+    --code-dim: #6b7a80;
+    --code-accent: #6bd6c4;
+    --note-bg: #1e2b29;
+    --note-border: #2c3d3a;
+    --note-text: #d3e2dd;
+    --caption: #8a8884;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg-page);
+    color: var(--ink);
+    font-family: var(--serif);
+    margin: 0;
+    padding: 40px 20px 80px;
+  }
+
+  .page-head {
+    max-width: 900px;
+    margin: 0 auto 32px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--caption);
+    line-height: 1.6;
+  }
+  .page-head strong { color: var(--ink-soft); }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .slot-caption {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .slot-caption .tag {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 700;
+  }
+
+  .slide {
+    background: var(--slide-bg);
+    border-radius: 6px;
+    padding: 34px 40px 26px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    aspect-ratio: 16 / 9.6;
+  }
+
+  .breadcrumb {
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 14px;
+    width: fit-content;
+  }
+
+  .eyebrow {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  h1 {
+    font-size: 34px;
+    margin: 0;
+    text-wrap: balance;
+    line-height: 1.15;
+  }
+
+  .weak-prompt {
+    font-size: 16.5px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    max-width: 62ch;
+  }
+  .weak-prompt b { color: var(--ink); }
+  .weak-prompt em { color: var(--ink-soft); }
+
+  .lead {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    max-width: 68ch;
+    line-height: 1.5;
+  }
+  .lead code { font-family: var(--mono); font-size: 0.92em; color: var(--ink); }
+
+  .cols {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 22px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .code-panel {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 22px 24px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--code-text);
+    line-height: 1.75;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code-panel .dim { color: var(--code-dim); }
+  .code-panel .arrow { color: var(--code-accent); }
+  .code-panel .warn {
+    color: var(--code-accent);
+    font-weight: 700;
+    display: block;
+    margin-top: 14px;
+    white-space: pre-wrap;
+  }
+
+  .note-panel {
+    background: var(--note-bg);
+    border: 1px solid var(--note-border);
+    border-radius: 6px;
+    padding: 22px 24px;
+    display: flex;
+    align-items: center;
+  }
+  .note-panel p {
+    font-style: italic;
+    color: var(--note-text);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--panel-border);
+    padding-top: 10px;
+    font-family: var(--serif);
+  }
+
+  @media (max-width: 720px) {
+    .cols { grid-template-columns: 1fr; }
+    .slide { aspect-ratio: auto; }
+  }
+</style>
+
+<div class="page-head">
+  <strong>Як вставити в презентацію:</strong> нижче — два мокапи слайдів у стилі поточного шаблону (той самий breadcrumb / код-блок / нотатка / футер). Перший <strong>замінює</strong> існуючий слайд 9 (реальні дані замість вигаданих), другий — <strong>новий слайд 9а</strong>, одразу після нього, друга вправа на іншому багу.
+</div>
+
+<div class="stack">
+
+  <section>
+    <div class="slot-caption"><span class="tag">заміна слайду 9</span> дані реальні, з Elasticsearch</div>
+    <div class="slide">
+      <div class="breadcrumb">Частина 1 · практика</div>
+      <div class="eyebrow">Вправа 1</div>
+      <h1>Перепиши слабкий промпт</h1>
+      <p class="weak-prompt"><b>Слабкий промпт:</b> <em>«подивись, чому чекін звички іноді падає з помилкою, і скажи що не так».</em></p>
+      <p class="lead">Реальний приклад із логів Habit Tracker — два запити того самого користувача до <em>тієї самої</em> звички, різниця 10 секунд:</p>
+      <div class="cols">
+        <div class="code-panel">PATCH /api/habits/2c336dd7.../checkin 400 <span class="arrow">→</span> ValidationError: Невалідна дата: undefined
+
+PATCH /api/habits/2c336dd7.../checkin 500 <span class="arrow">→</span> RangeError: Invalid count value: -3
+    at checkIn (habitService.ts:161)
+<span class="warn">⚠ Однаковий тип інпуту (число) — різний результат: 400 проти 500</span></div>
+        <div class="note-panel">
+          <p>Слабкий промпт цю різницю навіть не згадує — а сильний має назвати саме її: чому валідне за типом (число) значення все одно валить сервер 500-ю, а не повертає 400.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <span>AI в QA · Урок 1–2 · Практика 1</span>
+        <span>9</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="slot-caption"><span class="tag">новий слайд 9а</span> той самий формат, інший баг</div>
+    <div class="slide">
+      <div class="breadcrumb">Частина 1 · практика</div>
+      <div class="eyebrow">Вправа 2</div>
+      <h1>Перепиши слабкий промпт</h1>
+      <p class="weak-prompt"><b>Слабкий промпт:</b> <em>«звичку не вдається заархівувати, глянь чому і виправ».</em></p>
+      <p class="lead">Реальний приклад — дві архівації, концептуально той самий конфлікт, різні коди відповіді:</p>
+      <div class="cols">
+        <div class="code-panel">POST /api/habits/9c8f1561.../archive 500 <span class="arrow">→</span> Error: Archive already in progress
+
+POST /api/habits/7350be8a.../archive 409 <span class="arrow">→</span> ConflictError: Звичка вже заархівована
+<span class="warn">⚠ Той самий "конфлікт архівації" — 500 в одному випадку, 409 в іншому</span></div>
+        <div class="note-panel">
+          <p>Слабкий промпт не каже, що конфліктів насправді два різних типи. Сильний має назвати: паралельна архівація падає як необроблена 500, а вже заархівована звичка коректно повертає 409 — і вказати, що перша гілка кидає звичайний <code>Error</code>, а не <code>ConflictError</code>.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <span>AI в QA · Урок 1–2 · Практика 1</span>
+        <span>9а</span>
+      </div>
+    </div>
+  </section>
+
+</div>

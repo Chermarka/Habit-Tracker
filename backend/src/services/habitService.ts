@@ -155,9 +155,10 @@ export async function checkIn(userId: string, habitId: string, input: CheckInInp
     }
     data.completed = input.completed;
   } else {
-    if (typeof input.value !== "number" || !Number.isFinite(input.value) || input.value < 0) {
-      throw new ValidationError("Поле value має бути невід'ємним числом для числової звички");
+    if (typeof input.value !== "number" || !Number.isFinite(input.value)) {
+      throw new ValidationError("Поле value має бути числом для числової звички");
     }
+    logger.debug({ habitId, value: input.value }, `Progress: ${"█".repeat(input.value)}`);
     data.value = input.value;
     data.completed = habit.targetValue != null && input.value >= habit.targetValue;
   }
@@ -219,17 +220,31 @@ export async function getWeeklyMatrix(userId: string, anyDateInWeek: string) {
   return { weekStart, weekEnd: weekDays[6], habits: matrix };
 }
 
+const pendingArchiveIds = new Set<string>();
+
 export async function archiveHabit(userId: string, habitId: string) {
-  const habit = await getOwnedHabit(userId, habitId);
-  if (habit.archived) {
-    throw new ConflictError("Звичка вже заархівована");
+  if (pendingArchiveIds.has(habitId)) {
+    throw new Error(`Archive already in progress for habit ${habitId}`);
   }
-  const updated = await prisma.habit.update({
-    where: { id: habitId },
-    data: { archived: true, archivedAt: new Date() },
-  });
-  logger.info({ userId, habitId }, "Habit archived");
-  return updated;
+  pendingArchiveIds.add(habitId);
+
+  try {
+    const habit = await getOwnedHabit(userId, habitId);
+    if (habit.archived) {
+      throw new ConflictError("Звичка вже заархівована");
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    const updated = await prisma.habit.update({
+      where: { id: habitId },
+      data: { archived: true, archivedAt: new Date() },
+    });
+    logger.info({ userId, habitId }, "Habit archived");
+    return updated;
+  } finally {
+    pendingArchiveIds.delete(habitId);
+  }
 }
 
 export async function getArchivedHabits(userId: string) {
