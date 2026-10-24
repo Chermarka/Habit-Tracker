@@ -395,6 +395,21 @@ body {
   font-weight: 600;
 }
 
+.snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(36, 27, 47, 0.3);
+  z-index: 100;
+}
+
 /* modal */
 .modal-backdrop {
   position: fixed;

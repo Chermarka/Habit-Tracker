@@ -58,6 +58,15 @@ export interface CurrentUser {
   nickname: string;
 }
 
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 const SESSION_KEY = "habit-tracker-session";
 
 export function getSession(): CurrentUser | null {
@@ -89,7 +98,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const body = await res.json();
   if (!res.ok) {
     const err = body as ApiError;
-    throw new Error(err.message || `Request failed: ${res.status}`);
+    throw new ApiRequestError(err.message || `Request failed: ${res.status}`, res.status);
   }
   return body as T;
 }

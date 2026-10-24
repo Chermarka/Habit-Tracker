@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { api } from "../api";
+import { api, ApiRequestError } from "../api";
 import type { DashboardHabit } from "../api";
 import { todayStr, formatHuman } from "../dateUtils";
 import { ArchiveConfirmModal } from "./ArchiveConfirmModal";
@@ -9,6 +9,7 @@ export function Dashboard() {
   const [habits, setHabits] = useState<DashboardHabit[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<DashboardHabit | null>(null);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
   const date = todayStr();
 
   async function load() {
@@ -24,6 +25,12 @@ export function Dashboard() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (!snackbar) return;
+    const t = setTimeout(() => setSnackbar(null), 4000);
+    return () => clearTimeout(t);
+  }, [snackbar]);
 
   async function toggleBinary(h: DashboardHabit) {
     const next = !h.completed;
@@ -87,11 +94,25 @@ export function Dashboard() {
           habitName={archiveTarget.name}
           onClose={() => setArchiveTarget(null)}
           onConfirm={async () => {
-            await api.archiveHabit(archiveTarget.id);
-            setArchiveTarget(null);
-            load();
+            try {
+              await api.archiveHabit(archiveTarget.id);
+              setArchiveTarget(null);
+              load();
+            } catch (e) {
+              if (e instanceof ApiRequestError && e.status >= 500) {
+                setSnackbar("Упс, трапилась халепа");
+              } else {
+                setError((e as Error).message);
+              }
+            }
           }}
         />
+      )}
+
+      {snackbar && (
+        <div className="snackbar" role="alert">
+          {snackbar}
+        </div>
       )}
     </div>
   );
