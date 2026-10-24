@@ -400,13 +400,15 @@ body {
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  background: var(--ink);
+  background: var(--danger);
   color: #fff;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  box-shadow: 0 6px 20px rgba(36, 27, 47, 0.3);
+  padding: 20px 36px;
+  border-radius: 16px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  min-width: 320px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(229, 72, 77, 0.45);
   z-index: 100;
 }
 
